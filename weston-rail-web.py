@@ -62,6 +62,14 @@ def broker_auth(user: str, password: str) -> bool:
         return False
 
 
+def broker_logoff(user: str, app: str) -> None:
+    """Sitzung dieses Programms beenden (Tab geschlossen)."""
+    try:
+        broker("LOGOFF %s app=%s" % (user, app))
+    except OSError:
+        pass
+
+
 def broker_connect(user: str, app: str) -> int:
     """Einmaligen Port fuer eine Browser-Sitzung des Users anfordern."""
     answer = broker("CONNECT %s app=%s shell=%s" % (user, app, CONFIG.shell))
@@ -603,6 +611,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.log(traceback.format_exc())
         finally:
             guacd.close()
+            # Tab geschlossen: Sitzung samt Anwendung beenden
+            broker_logoff(user, app)
             self.log("Sitzung für '%s' beendet (%s)" % (user, app))
         self.close_connection = True
 
@@ -614,8 +624,9 @@ def main():
     parser.add_argument("--listen", default="127.0.0.1",
                         help="Adresse (Standard 127.0.0.1, also hinter einem Reverse Proxy)")
     parser.add_argument("--apps-conf", default=APPS_CONF)
-    parser.add_argument("--shell", default="kiosk", choices=("kiosk", "desktop"),
-                        help="kiosk: Anwendung bildschirmfüllend; desktop: mit Fensterverwaltung")
+    parser.add_argument("--shell", default="desktop", choices=("kiosk", "desktop"),
+                        help="desktop (Vorgabe): Fensterverwaltung, Maus funktioniert; "
+                             "kiosk: Anwendung bildschirmfüllend, derzeit ohne Mausbedienung")
     parser.add_argument("--trace", type=int, default=0, metavar="N",
                         help="die ersten N Anweisungen je Richtung protokollieren")
     parser.add_argument("--gfx", action="store_true",
