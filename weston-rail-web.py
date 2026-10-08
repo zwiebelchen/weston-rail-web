@@ -550,7 +550,10 @@ class Handler(BaseHTTPRequestHandler):
                 "hostname": "127.0.0.1",
                 "port": str(port),
                 "username": user,
-                "password": "",
+                # guacd fordert sonst beim Benutzer ein Kennwort an
+                # ("required,password") und wartet; die Weston-Sitzung hinter
+                # dem Einmal-Port prüft keine Zugangsdaten
+                "password": "weston-rail-web",
                 "security": "tls",
                 "ignore-cert": "true",
                 "resize-method": "display-update",
