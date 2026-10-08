@@ -334,9 +334,10 @@ class GuacdConnection:
         # Weiterleitung abbricht.
         self.sock.settimeout(None)
 
-    def pump_to(self, ws, log=None):
+    def pump_to(self, ws, log=None, trace=0):
         """Alles von guacd an den Browser weiterreichen."""
         rest = ""
+        traced = 0
         while True:
             d = self.sock.recv(65536)
             if not d:
@@ -351,6 +352,9 @@ class GuacdConnection:
                 instruction, rest = rest.split(";", 1)
                 if ".error," in instruction or instruction.startswith("5.error"):
                     log("guacd meldet: " + instruction.strip())
+                elif traced < trace:
+                    traced += 1
+                    log("guacd -> Browser: " + instruction.strip()[:120])
             if len(rest) > 65536:
                 rest = ""
 
@@ -567,7 +571,7 @@ class Handler(BaseHTTPRequestHandler):
 
         def to_browser():
             try:
-                guacd.pump_to(ws, self.log)
+                guacd.pump_to(ws, self.log, CONFIG.trace)
             except Exception as exc:                   # noqa: BLE001
                 self.log("Richtung guacd->Browser beendet: %r" % (exc,))
             finally:
@@ -587,6 +591,8 @@ class Handler(BaseHTTPRequestHandler):
                     break
                 if msg:
                     count += 1
+                    if count <= CONFIG.trace:
+                        self.log("Browser -> guacd: " + msg.strip()[:120])
                     guacd.send(msg)
         except Exception as exc:                       # noqa: BLE001
             self.log("Richtung Browser->guacd beendet: %r" % (exc,))
@@ -607,6 +613,8 @@ def main():
     parser.add_argument("--apps-conf", default=APPS_CONF)
     parser.add_argument("--shell", default="kiosk", choices=("kiosk", "desktop"),
                         help="kiosk: Anwendung bildschirmfüllend; desktop: mit Fensterverwaltung")
+    parser.add_argument("--trace", type=int, default=0, metavar="N",
+                        help="die ersten N Anweisungen je Richtung protokollieren")
     parser.add_argument("--gfx", action="store_true",
                         help="Grafikkanal (EGFX) in guacd verwenden (Standard: aus)")
     parser.add_argument("--insecure-cookie", action="store_true",
