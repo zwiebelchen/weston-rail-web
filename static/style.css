@@ -290,3 +290,14 @@ button.primary:hover, #login-button:hover:not(:disabled) { background: var(--acc
 	overflow: auto;
 	white-space: pre-wrap;
 }
+
+.note {
+	align-self: center;
+	margin-right: 10px;
+	color: var(--muted);
+	font-size: 13px;
+	max-width: 420px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}

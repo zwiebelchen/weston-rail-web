@@ -20,7 +20,7 @@ BUILD=${BUILD:-/usr/local/src}
 apt-get update
 apt-get install -y --no-install-recommends \
 	build-essential autoconf automake libtool pkgconf curl ca-certificates \
-	libcairo2-dev libjpeg62-turbo-dev libpng-dev libossp-uuid-dev
+	libcairo2-dev libjpeg62-turbo-dev libpng-dev libossp-uuid-dev ghostscript
 
 # Debian nennt das Entwicklerpaket von FreeRDP 2 "freerdp2-dev"
 if apt-get install -y --no-install-recommends freerdp2-dev 2>/dev/null ||
@@ -72,8 +72,9 @@ After=network.target
 [Service]
 ExecStart=$PREFIX/sbin/guacd -b 127.0.0.1 -f
 Restart=on-failure
-User=nobody
-Group=nogroup
+# root: guacd legt die umgeleiteten Laufwerke in den Home-Verzeichnissen
+# der Benutzer an; lauscht nur auf 127.0.0.1
+User=root
 
 [Install]
 WantedBy=multi-user.target

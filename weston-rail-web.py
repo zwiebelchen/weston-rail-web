@@ -189,6 +189,26 @@ SESSIONS = {}
 SESSIONS_LOCK = threading.Lock()
 
 
+def drive_path(user: str) -> str:
+    """Ordner, der in der Sitzung als Laufwerk erscheint (wie beim
+    'Virtuellen Remotedesktop-Laufwerk' von Microsoft)."""
+    import pwd
+
+    try:
+        home = pwd.getpwnam(user).pw_dir
+        entry = pwd.getpwnam(user)
+    except KeyError:
+        return ""
+    path = os.path.join(home, CONFIG.drive_dir)
+    try:
+        os.makedirs(path, exist_ok=True)
+        os.chown(path, entry.pw_uid, entry.pw_gid)
+        os.chmod(path, 0o770)
+    except OSError:
+        return ""
+    return path
+
+
 def session_new(user):
     token = secrets.token_urlsafe(32)
     with SESSIONS_LOCK:
@@ -552,8 +572,10 @@ class Handler(BaseHTTPRequestHandler):
         ws = WebSocket(self.connection)
         guacd = None
         try:
+            drive = drive_path(user)
             port = broker_connect(user, app)
-            self.log("Sitzung für '%s': %s über 127.0.0.1:%d" % (user, app, port))
+            self.log("Sitzung für '%s': %s über 127.0.0.1:%d (Laufwerk: %s)"
+                     % (user, app, port, drive or "keins"))
             guacd = GuacdConnection({
                 "hostname": "127.0.0.1",
                 "port": str(port),
@@ -565,6 +587,13 @@ class Handler(BaseHTTPRequestHandler):
                 "security": "tls",
                 "ignore-cert": "true",
                 "resize-method": "display-update",
+                # Laufwerk für Datei-Austausch und virtueller Drucker (PDF)
+                "enable-drive": "true" if drive else "",
+                "drive-name": CONFIG.drive_name,
+                "drive-path": drive,
+                "create-drive-path": "true",
+                "enable-printing": "true",
+                "printer-name": CONFIG.printer_name,
                 # guacd 1.6 mit FreeRDP 3 zeichnet ueber den Grafikkanal
                 # nichts; mit den klassischen Codecs kommt das Bild an
                 "disable-gfx": CONFIG.gfx and "" or "true",
@@ -627,6 +656,11 @@ def main():
     parser.add_argument("--shell", default="desktop", choices=("kiosk", "desktop"),
                         help="desktop (Vorgabe): Fensterverwaltung, Maus funktioniert; "
                              "kiosk: Anwendung bildschirmfüllend, derzeit ohne Mausbedienung")
+    parser.add_argument("--drive-dir", default="Browser-Dateien",
+                        help="Ordner im Home des Benutzers, der in der Sitzung als "
+                             "Laufwerk erscheint (Standard: Browser-Dateien)")
+    parser.add_argument("--drive-name", default="Browser")
+    parser.add_argument("--printer-name", default="Browser-Drucker")
     parser.add_argument("--trace", type=int, default=0, metavar="N",
                         help="die ersten N Anweisungen je Richtung protokollieren")
     parser.add_argument("--gfx", action="store_true",

@@ -172,6 +172,24 @@ unverändert.
 Browser-Sitzungen und mstsc-Sitzungen laufen getrennt nebeneinander: RAIL
 für mstsc, gewöhnliches RDP für den Browser.
 
+## Dateien und Drucken
+
+Wie beim RD-Web-Client von Microsoft:
+
+- **Dateien**: Die Sitzung bekommt ein umgeleitetes Laufwerk. Es zeigt auf
+  `~/Browser-Dateien` des Benutzers auf dem Server (Option `--drive-dir`)
+  und erscheint in der Sitzung unter `~/RDP-Laufwerke/Browser`. Im Browser
+  lädt man Dateien über das Pfeil-Symbol in der Kopfleiste hoch oder zieht
+  sie einfach auf das Fenster.
+- **Drucken**: In der Sitzung steht ein Drucker „Browser-Drucker“ bereit
+  (Option `--printer-name`). Ein Druckauftrag kommt als **PDF im Browser**
+  an und wird heruntergeladen – wie der „Virtuelle Remotedesktop-Drucker“
+  bei Microsoft. Dafür braucht `guacd` Ghostscript (installiert
+  `tools/install-guacd.sh` mit).
+
+`guacd` läuft als root, weil es die Laufwerksordner in den
+Home-Verzeichnissen der Benutzer anlegt; es lauscht nur auf 127.0.0.1.
+
 ## Werkzeuge
 
 - `tools/guac-smoketest.py` – spricht das Guacamole-Protokoll direkt mit

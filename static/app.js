@@ -139,6 +139,7 @@ function showHome() {
 		session.tab.classList.remove("active");
 	}
 	$("home-tab").classList.add("active");
+	$("upload").classList.add("hidden");
 }
 
 function showSession(app) {
@@ -153,6 +154,7 @@ function showSession(app) {
 		other.element.classList.toggle("hidden", !visible);
 		other.tab.classList.toggle("active", visible);
 	}
+	$("upload").classList.toggle("hidden", !session.filesystem);
 	resize(session);
 	session.client.getDisplay().getElement().focus();
 }
@@ -245,6 +247,30 @@ function startSession(app) {
 			closeSession(app.name);
 		}
 	};
+	/* Druckaufträge und Dateien vom Server: im Browser herunterladen */
+	client.onfile = (stream, mimetype, filename) => {
+		const reader = new Guacamole.BlobReader(stream, mimetype);
+		stream.sendAck("OK", 0x0000);
+		reader.onend = () => {
+			const url = URL.createObjectURL(reader.getBlob());
+			const link = document.createElement("a");
+			link.href = url;
+			link.download = filename || "download";
+			document.body.appendChild(link);
+			link.click();
+			link.remove();
+			setTimeout(() => URL.revokeObjectURL(url), 30000);
+			note(filename + " wurde heruntergeladen");
+		};
+	};
+
+	/* Laufwerk der Sitzung: Ziel für Uploads */
+	client.onfilesystem = (object, name) => {
+		session.filesystem = object;
+		session.filesystemName = name;
+		$("upload").classList.remove("hidden");
+	};
+
 	client.onerror = (status) => {
 		logLine("Fehler: " + (status && status.message ? status.message : status));
 		dialog(app.title + " konnte nicht gestartet werden.",
@@ -282,6 +308,34 @@ function startSession(app) {
 	session.keyboard = keyboard;
 }
 
+/* kurze Rückmeldung in der Kopfleiste */
+function note(text) {
+	const element = $("note");
+	element.textContent = text;
+	element.classList.remove("hidden");
+	clearTimeout(note.timer);
+	note.timer = setTimeout(() => element.classList.add("hidden"), 6000);
+}
+
+function uploadFiles(files) {
+	const session = state.sessions.get(state.active);
+	if (!session || !session.filesystem) {
+		note("Für diese Sitzung steht kein Laufwerk bereit");
+		return;
+	}
+	Array.from(files).forEach((file) => {
+		const stream = session.filesystem.createOutputStream(
+			file.type || "application/octet-stream", "/" + file.name);
+		const writer = new Guacamole.BlobWriter(stream);
+		writer.oncomplete = () => {
+			stream.sendEnd();
+			note(file.name + " wurde in die Sitzung übertragen");
+		};
+		writer.onerror = () => note(file.name + " konnte nicht übertragen werden");
+		writer.sendBlob(file);
+	});
+}
+
 function cleanupSession(app) {
 	const session = state.sessions.get(app);
 	if (!session)
@@ -316,6 +370,23 @@ function setup() {
 	$("login-pass").addEventListener("input", updateLoginButton);
 
 	$("home-tab").onclick = showHome;
+
+	/* Hochladen: Schaltfläche und Ziehen auf das Fenster */
+	$("upload").onclick = () => $("upload-input").click();
+	$("upload-input").onchange = (event) => {
+		uploadFiles(event.target.files);
+		event.target.value = "";
+	};
+	document.addEventListener("dragover", (event) => {
+		if (state.active)
+			event.preventDefault();
+	});
+	document.addEventListener("drop", (event) => {
+		if (!state.active)
+			return;
+		event.preventDefault();
+		uploadFiles(event.dataTransfer.files);
+	});
 	$("view-grid").onclick = () => {
 		$("apps").className = "apps grid";
 		$("view-grid").classList.add("active");
