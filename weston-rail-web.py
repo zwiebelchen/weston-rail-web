@@ -14,6 +14,7 @@ guacamole-common-js (Apache-2.0), siehe static/vendor/.
 
 import argparse
 import base64
+import traceback
 import hashlib
 import http.cookies
 import json
@@ -216,6 +217,7 @@ class WebSocket:
         self.sock = sock
         self.rfile = rfile
         self.buf = b""
+        self.last_error = None
         self.lock = threading.Lock()
 
     def send(self, text: str):
@@ -277,7 +279,8 @@ class WebSocket:
                     self.sock.sendall(b"\x8a" + bytes([len(payload)]) + bytes(payload))
                 return ""
             return bytes(payload).decode("utf-8", "replace")
-        except (OSError, ConnectionError, struct.error):
+        except (OSError, ConnectionError, struct.error) as exc:
+            self.last_error = exc
             return None
 
 
@@ -547,22 +550,30 @@ class Handler(BaseHTTPRequestHandler):
         def to_browser():
             try:
                 guacd.pump_to(ws, self.log)
-            except Exception:                          # noqa: BLE001
-                pass
+            except Exception as exc:                   # noqa: BLE001
+                self.log("Richtung guacd->Browser beendet: %r" % (exc,))
             finally:
                 ws.close()
 
         t = threading.Thread(target=to_browser, daemon=True)
         t.start()
         try:
+            count = 0
             while True:
                 msg = ws.recv()
                 if msg is None:
+                    self.log("Browser hat die Verbindung geschlossen "
+                             "(%d Nachrichten empfangen%s)"
+                             % (count, ", Grund: %r" % (ws.last_error,)
+                                if ws.last_error else ""))
                     break
                 if msg:
+                    count += 1
                     guacd.send(msg)
-        except Exception:                              # noqa: BLE001
-            pass
+        except Exception as exc:                       # noqa: BLE001
+            self.log("Richtung Browser->guacd beendet: %r" % (exc,))
+            if CONFIG.verbose:
+                self.log(traceback.format_exc())
         finally:
             guacd.close()
             self.log("Sitzung für '%s' beendet (%s)" % (user, app))
