@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Remotedesktop-Webclient</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- Anmeldung -->
+<div id="login-view" class="view hidden">
+  <div class="login-card">
+    <div class="login-accent"></div>
+    <div class="login-body">
+      <h1>Anmelden</h1>
+      <form id="login-form" autocomplete="on">
+        <label for="login-user">Benutzername</label>
+        <input id="login-user" name="username" type="text" placeholder="Benutzername"
+               autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        <label for="login-pass">Kennwort</label>
+        <input id="login-pass" name="password" type="password" placeholder="Kennwort"
+               autocomplete="current-password" required>
+        <p id="login-error" class="error hidden"></p>
+        <div class="login-actions">
+          <button id="login-button" type="submit" disabled>Anmelden</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Angemeldet: Kopfleiste, Programme, laufende Sitzungen -->
+<div id="app-view" class="view hidden">
+  <header class="topbar">
+    <button id="home-tab" class="icon-button home" title="Startseite" aria-label="Startseite">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M12 3 3 11h2v9h5v-6h4v6h5v-9h2z" fill="currentColor"/>
+      </svg>
+    </button>
+    <nav id="tabs" class="tabs"></nav>
+    <div class="spacer"></div>
+    <button id="menu-button" class="icon-button" title="Weitere Optionen" aria-label="Weitere Optionen">⋮</button>
+    <button id="avatar" class="avatar" title="Konto" aria-label="Konto"></button>
+    <div id="menu" class="popup hidden">
+      <button data-action="fullscreen">Vollbild aufrufen</button>
+      <button data-action="about">Info</button>
+    </div>
+    <div id="account" class="popup account hidden">
+      <div class="account-top"><button data-action="logout" class="link">Abmelden</button></div>
+      <div class="account-body">
+        <div id="account-avatar" class="avatar big"></div>
+        <div>
+          <div id="account-user" class="account-name"></div>
+          <div id="account-sub" class="account-sub"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="home" class="content">
+    <div class="toolbar">
+      <button id="view-grid" class="icon-button active" title="Kacheln" aria-label="Kacheln">▦</button>
+      <button id="view-list" class="icon-button" title="Liste" aria-label="Liste">☰</button>
+    </div>
+    <section class="group">
+      <div class="group-head">
+        <span class="chevron">⌄</span>
+        <h2 id="workspace-name">Work Resources</h2>
+      </div>
+      <div id="apps" class="apps grid"></div>
+      <p id="apps-empty" class="empty hidden">Es sind keine Programme veröffentlicht.</p>
+    </section>
+  </main>
+
+  <div id="sessions"></div>
+</div>
+
+<!-- Verbindungsdialog -->
+<div id="connect-dialog" class="overlay hidden">
+  <div class="dialog">
+    <div class="login-accent"></div>
+    <div class="dialog-body">
+      <h2 id="connect-title">Verbindung wird hergestellt</h2>
+      <p id="connect-state">Sichere Verbindung wird hergestellt…</p>
+      <div class="progress"><div id="connect-bar" class="bar"></div></div>
+      <div class="dialog-actions">
+        <button id="connect-details" class="link">Details anzeigen</button>
+        <button id="connect-cancel" class="primary">Abbrechen</button>
+      </div>
+      <pre id="connect-log" class="log hidden"></pre>
+    </div>
+  </div>
+</div>
+
+<script src="/static/vendor/guacamole-common.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

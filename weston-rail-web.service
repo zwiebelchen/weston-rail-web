@@ -1,0 +1,13 @@
+[Unit]
+Description=weston-mirror RAIL Webclient (RemoteApps im Browser)
+After=network-online.target weston-rail-broker.service guacd.service
+Wants=network-online.target
+Requires=guacd.service
+
+[Service]
+# hinter einem Reverse Proxy (Caddy/nginx), der TLS macht:
+ExecStart=/usr/local/lib/weston-rail-web/weston-rail-web.py --listen 127.0.0.1 --port 8081
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

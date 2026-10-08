@@ -60,7 +60,7 @@ try:
                 open("/tmp/guac_frame_%d.png"%drawing,"wb").write(data)
             except Exception: pass
         if op=="sync":
-            s.sendall(enc("sync", i[1] if len(i)>1 else "0"))
+            s.sendall(enc("sync", i[1] if len(i)>1 else "0"))  # enc() setzt die Laengen selbst
         if op in ("png","cfill","copy","rect","img","blob","end","sync","cursor","size"):
             drawing+=1
             seen[op]=seen.get(op,0)+1

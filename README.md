@@ -11,7 +11,37 @@ auch bekommt. Der Browser ist nur ein weiterer Client.
 
 ## Stand
 
-Durchstich mit `guacd` gemacht; Oberfläche noch nicht begonnen.
+Funktioniert Ende zu Ende (im Container getestet): Anmeldung, Programmliste,
+Symbole, WebSocket-Sitzung mit Bild vom Server. Die Oberfläche ist am
+RD-Web-Client von Windows Server orientiert: Anmeldekarte, Kopfleiste mit
+Startseite und Konto, Kacheln bzw. Liste unter dem Namen des Arbeitsbereichs,
+Verbindungsdialog, Tabs für laufende Anwendungen.
+
+## Installation
+
+Auf dem RAIL-Server (dort laufen Broker und Weston):
+
+```bash
+git clone https://github.com/zwiebelchen/weston-rail-web.git
+cd weston-rail-web
+sudo ./install.sh
+sudo systemctl enable --now weston-rail-web
+```
+
+Der Dienst lauscht auf `127.0.0.1:8081` und gehört hinter einen Reverse Proxy
+mit TLS (Caddy); ohne HTTPS zum Testen mit `--insecure-cookie` starten.
+Optionen: `--listen`, `--port`, `--shell kiosk|desktop`, `--apps-conf`, `-v`.
+
+Caddy:
+
+```
+apps.example.org {
+	reverse_proxy 127.0.0.1:8081
+}
+```
+
+Voraussetzungen: `guacd` (Paket `guacd`), Python 3, ein laufender
+`weston-rail-broker` mit Version, die `AUTH` und `CONNECT` kennt.
 
 ## Aufbau
 
@@ -100,6 +130,21 @@ Umleitung, die ohnehin nützlich ist:
 Damit bleibt die Anmeldung an einer Stelle, der Browser-Nutzer landet in
 derselben Session pro User wie ein mstsc-Nutzer, und Guacamole bleibt
 unverändert.
+
+## Wie es zusammenspielt
+
+- **Anmeldung**: Der Dienst fragt den Broker (`AUTH`), der prüft per PAM –
+  also dieselben Konten wie bei mstsc, inklusive Active Directory.
+- **Programme**: aus `/etc/weston-rail/apps.conf`, derselben Allowlist.
+  Symbole kommen aus der `.desktop`-Datei bzw. dem Icon-Theme.
+- **Sitzung**: Der Dienst fordert beim Broker per `CONNECT <user> app=…`
+  einen einmaligen lokalen Port an; der Broker startet dafür eine eigene
+  Weston-Instanz mit `kiosk-shell` (eine Anwendung bildschirmfüllend) oder
+  `desktop-shell` (mit Fensterverwaltung). `guacd` verbindet sich dorthin,
+  der Dienst reicht das Guacamole-Protokoll per WebSocket an den Browser.
+
+Browser-Sitzungen und mstsc-Sitzungen laufen getrennt nebeneinander: RAIL
+für mstsc, gewöhnliches RDP für den Browser.
 
 ## Werkzeuge
 
