@@ -43,19 +43,30 @@ function showLogin(message) {
 	$("login-user").focus();
 }
 
+/*
+ * Der Anmeldeknopf bleibt immer bedienbar: Beim automatischen Ausfüllen
+ * durch den Browser (Passwortspeicher) gibt es kein Eingabeereignis, ein
+ * nur dann freigeschalteter Knopf bliebe gesperrt.
+ */
 function updateLoginButton() {
-	$("login-button").disabled = !($("login-user").value && $("login-pass").value);
+	$("login-button").disabled = false;
 }
 
 async function login(event) {
 	event.preventDefault();
 	const user = $("login-user").value.trim();
 	const password = $("login-pass").value;
+	if (!user || !password) {
+		showLogin("Bitte Benutzername und Kennwort eingeben");
+		return;
+	}
 	$("login-button").disabled = true;
+	$("login-error").classList.add("hidden");
 	const result = await api("/api/login", {
 		method: "POST",
 		body: JSON.stringify({ user: user, password: password }),
 	});
+	$("login-button").disabled = false;
 	if (!result.ok) {
 		showLogin(result.body.error || "Anmeldung fehlgeschlagen");
 		return;

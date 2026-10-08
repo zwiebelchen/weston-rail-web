@@ -386,6 +386,9 @@ class Handler(BaseHTTPRequestHandler):
         if path in ("/", "/index.html"):
             return self.send_file(os.path.join(STATIC, "index.html"),
                                   "text/html; charset=utf-8")
+        if path == "/favicon.ico":
+            return self.send_file(os.path.join(STATIC, "app-default.svg"),
+                                  "image/svg+xml")
         if path == "/api/me":
             user = self.user()
             return self.send_json({"user": user} if user else {"user": None})
