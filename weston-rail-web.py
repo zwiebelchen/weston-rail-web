@@ -527,6 +527,13 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Upgrade", "websocket")
         self.send_header("Connection", "Upgrade")
         self.send_header("Sec-WebSocket-Accept", accept)
+        # guacamole-common-js verbindet mit dem Unterprotokoll "guacamole";
+        # ohne Bestaetigung verwirft der Browser die Verbindung sofort
+        wanted = [p.strip() for p in
+                  (self.headers.get("Sec-WebSocket-Protocol") or "").split(",") if p.strip()]
+        if wanted:
+            self.send_header("Sec-WebSocket-Protocol",
+                             "guacamole" if "guacamole" in wanted else wanted[0])
         self.end_headers()
         self.wfile.flush()
 
