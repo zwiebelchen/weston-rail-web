@@ -316,13 +316,25 @@ class GuacdConnection:
             values[0] = names[0]
         self.sock.sendall(guac_encode("connect", *values))
 
-    def pump_to(self, ws):
+    def pump_to(self, ws, log=None):
         """Alles von guacd an den Browser weiterreichen."""
+        rest = ""
         while True:
             d = self.sock.recv(65536)
             if not d:
                 break
-            ws.send(d.decode("utf-8", "replace"))
+            text = d.decode("utf-8", "replace")
+            ws.send(text)
+            if not log:
+                continue
+            # Fehlermeldungen von guacd mitlesen, damit sie im Protokoll stehen
+            rest += text
+            while ";" in rest:
+                instruction, rest = rest.split(";", 1)
+                if ".error," in instruction or instruction.startswith("5.error"):
+                    log("guacd meldet: " + instruction.strip())
+            if len(rest) > 65536:
+                rest = ""
 
     def send(self, text):
         self.sock.sendall(text.encode())
@@ -469,7 +481,12 @@ class Handler(BaseHTTPRequestHandler):
             """Nur Ziffern übernehmen: guacamole-common-js hängt beim
             Verbinden ein '?' an die Adresse, sonst käme z. B. '96?' an
             und guacd würde die Verbindung verwerfen."""
-            raw = "".join(c for c in (query.get(name) or [""])[0] if c.isdigit())
+            value_raw = (query.get(name) or [""])[0]
+            raw = ""
+            for c in value_raw:            # nur die führenden Ziffern
+                if not c.isdigit():
+                    break
+                raw += c
             value = int(raw) if raw else default
             return str(max(lowest, min(highest, value)))
 
@@ -518,7 +535,7 @@ class Handler(BaseHTTPRequestHandler):
 
         def to_browser():
             try:
-                guacd.pump_to(ws)
+                guacd.pump_to(ws, self.log)
             except Exception:                          # noqa: BLE001
                 pass
             finally:
