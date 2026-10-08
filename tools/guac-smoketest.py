@@ -40,18 +40,33 @@ values=[params.get(n,"") for n in names]
 if names and names[0] == "VERSION_1_1_0": values[0]="VERSION_1_1_0"
 s.sendall(enc("connect",*values))
 print("gesendete Parameter:", {n:("***" if n=="password" else v) for n,v in zip(names,values) if v})
-drawing=0; t0=time.time()
+drawing=0; seen={}; streams={}; t0=time.time()
 try:
-    while time.time()-t0 < 25:
+    while time.time()-t0 < 20:
         i=r.inst(25)
         if i is None: print("Verbindung von guacd geschlossen"); break
         op=i[0]
+        if op=="blob" and len(i)>2:
+            import base64
+            streams.setdefault(i[1], b"")
+            try: streams[i[1]] += base64.b64decode(i[2])
+            except Exception: pass
+        if op=="end" and len(i)>1 and i[1] in streams:
+            open("/tmp/guac_img_%s.png"%i[1],"wb").write(streams.pop(i[1]))
+        if op=="png" and len(i)>5:
+            import base64
+            try:
+                data=base64.b64decode(i[5])
+                open("/tmp/guac_frame_%d.png"%drawing,"wb").write(data)
+            except Exception: pass
+        if op=="sync":
+            s.sendall(enc("sync", i[1] if len(i)>1 else "0"))
         if op in ("png","cfill","copy","rect","img","blob","end","sync","cursor","size"):
             drawing+=1
-            if drawing in (1,) : print("erste Zeichenanweisung:", op, i[1:6])
+            seen[op]=seen.get(op,0)+1
         elif op=="error": print("FEHLER von guacd:", i[1:]); break
         elif op=="disconnect": print("disconnect"); break
         else: print("<-", op, i[1:8])
 except socket.timeout:
     print("timeout")
-print("Zeichenanweisungen gesamt:", drawing)
+print("Zeichenanweisungen gesamt:", drawing, seen)
