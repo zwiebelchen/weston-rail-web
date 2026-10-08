@@ -55,7 +55,11 @@ sudo ./tools/install-guacd.sh      # auch einzeln aufrufbar
 ```
 
 Das Skript nimmt FreeRDP 2 mit guacamole-server 1.5.5, falls vorhanden
-(von Apache als stabil empfohlen), sonst FreeRDP 3 mit 1.6.0.
+(von Apache als stabil empfohlen), sonst FreeRDP 3 mit 1.6.0. Unter
+Debian 13 ist FreeRDP 2 als `freerdp2-dev` vorhanden; das ist der Weg,
+der funktioniert: guacd 1.6.0 mit FreeRDP 3 verbindet sich zwar, zeichnet
+aber nichts (Bild bleibt schwarz), während ein gewöhnlicher RDP-Client
+dieselbe Sitzung einwandfrei darstellt.
 
 Eine Stolperfalle, die das Skript umgeht: `configure` prüft mit einem
 eigenen Testprogramm, ob die FreeRDP-Strukturen einen `context` haben

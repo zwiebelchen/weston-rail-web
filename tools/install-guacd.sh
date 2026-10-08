@@ -22,9 +22,11 @@ apt-get install -y --no-install-recommends \
 	build-essential autoconf automake libtool pkgconf curl ca-certificates \
 	libcairo2-dev libjpeg62-turbo-dev libpng-dev libossp-uuid-dev
 
-if apt-get install -y --no-install-recommends libfreerdp-dev libwinpr-dev 2>/dev/null; then
+# Debian nennt das Entwicklerpaket von FreeRDP 2 "freerdp2-dev"
+if apt-get install -y --no-install-recommends freerdp2-dev 2>/dev/null ||
+   apt-get install -y --no-install-recommends libfreerdp-dev libwinpr-dev 2>/dev/null; then
 	VERSION=${VERSION:-1.5.5}
-	echo "FreeRDP 2 gefunden: baue guacamole-server $VERSION"
+	echo "FreeRDP 2 gefunden: baue guacamole-server $VERSION (empfohlen)"
 else
 	apt-get install -y --no-install-recommends freerdp3-dev libwinpr3-dev
 	VERSION=${VERSION:-1.6.0}
@@ -49,8 +51,8 @@ cd "guacamole-server-$VERSION"
 # "'freerdp' has no member named 'input'".
 # -Wno-error/-Wno-deprecated-declarations: configure haengt -Werror an;
 # neuere FreeRDP-Versionen melden abgekuendigte Namen.
-RDP_CPPFLAGS=$(pkg-config --cflags freerdp3 winpr3 2>/dev/null ||
-	pkg-config --cflags freerdp2 winpr 2>/dev/null || true)
+RDP_CPPFLAGS=$(pkg-config --cflags freerdp2 winpr 2>/dev/null ||
+	pkg-config --cflags freerdp3 winpr3 2>/dev/null || true)
 CPPFLAGS="$RDP_CPPFLAGS" ./configure --prefix="$PREFIX" \
 	--with-rdp \
 	--without-vnc --without-ssh --without-telnet --without-kubernetes \
