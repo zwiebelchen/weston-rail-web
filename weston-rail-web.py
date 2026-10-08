@@ -205,10 +205,16 @@ WS_MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 
 class WebSocket:
-    """Minimale RFC-6455-Umsetzung fuer Textrahmen."""
+    """Minimale RFC-6455-Umsetzung fuer Textrahmen.
 
-    def __init__(self, sock):
+    Gelesen wird über den gepufferten Leser des HTTP-Servers (rfile):
+    Teile der ersten Rahmen liegen nach dem Handschlag bereits in dessen
+    Puffer und wären beim direkten Lesen vom Socket verloren.
+    """
+
+    def __init__(self, sock, rfile=None):
         self.sock = sock
+        self.rfile = rfile
         self.buf = b""
         self.lock = threading.Lock()
 
@@ -235,6 +241,11 @@ class WebSocket:
             pass
 
     def _read(self, n):
+        if self.rfile is not None:
+            data = self.rfile.read(n)
+            if not data or len(data) < n:
+                raise ConnectionError
+            return data
         while len(self.buf) < n:
             d = self.sock.recv(65536)
             if not d:
@@ -508,7 +519,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.flush()
 
-        ws = WebSocket(self.connection)
+        ws = WebSocket(self.connection, self.rfile)
         guacd = None
         try:
             port = broker_connect(user, app)
