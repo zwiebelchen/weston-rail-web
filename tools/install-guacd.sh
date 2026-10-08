@@ -41,14 +41,24 @@ rm -rf "guacamole-server-$VERSION"
 tar xf "$TARBALL"
 cd "guacamole-server-$VERSION"
 
-# -Wno-error: neuere FreeRDP-Versionen melden abgekuendigte Funktionen,
-# guacamole-server uebersetzt sonst mit -Werror nicht
-./configure --prefix="$PREFIX" \
+# CPPFLAGS: configure prueft mit einem eigenen Testprogramm, ob die
+# FreeRDP-Strukturen einen "context" haben (FreeRDP 3), setzt dabei aber
+# den Suchpfad nicht. Unter Debian liegen die Header in
+# /usr/include/freerdp3, der Test schlaegt daher fehl und guacamole-server
+# uebersetzt gegen die alten FreeRDP-2-Strukturen -> Fehler
+# "'freerdp' has no member named 'input'".
+# -Wno-error/-Wno-deprecated-declarations: configure haengt -Werror an;
+# neuere FreeRDP-Versionen melden abgekuendigte Namen.
+RDP_CPPFLAGS=$(pkg-config --cflags freerdp3 winpr3 2>/dev/null ||
+	pkg-config --cflags freerdp2 winpr 2>/dev/null || true)
+CPPFLAGS="$RDP_CPPFLAGS" ./configure --prefix="$PREFIX" \
 	--with-rdp \
 	--without-vnc --without-ssh --without-telnet --without-kubernetes \
 	--disable-guacenc --disable-guaclog \
-	CFLAGS="-g -O2 -Wno-error"
+	CFLAGS="-g -O2 -Wno-error -Wno-deprecated-declarations"
 make -j"$(nproc)"
+grep -q "define FREERDP_HAS_CONTEXT" config.h 2>/dev/null ||
+	echo "Hinweis: FreeRDP-3-Erkennung fehlgeschlagen (siehe config.log)"
 make install
 ldconfig
 

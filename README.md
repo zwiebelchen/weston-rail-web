@@ -55,10 +55,15 @@ sudo ./tools/install-guacd.sh      # auch einzeln aufrufbar
 ```
 
 Das Skript nimmt FreeRDP 2 mit guacamole-server 1.5.5, falls vorhanden
-(von Apache als stabil empfohlen), sonst FreeRDP 3 mit 1.6.0. Mit sehr
-neuen FreeRDP-3-Versionen (ab etwa 3.3x) lässt sich 1.6.0 nicht
-übersetzen, weil FreeRDP dort eine Schnittstelle geändert hat; das
-FreeRDP 3.15 aus Debian 13 ist davon nicht betroffen.
+(von Apache als stabil empfohlen), sonst FreeRDP 3 mit 1.6.0.
+
+Eine Stolperfalle, die das Skript umgeht: `configure` prüft mit einem
+eigenen Testprogramm, ob die FreeRDP-Strukturen einen `context` haben
+(FreeRDP 3), setzt dabei aber den Header-Suchpfad nicht. Unter Debian
+liegen die Header in `/usr/include/freerdp3`, der Test schlägt deshalb
+fehl, und der Bau scheitert später mit
+`'freerdp' has no member named 'input'`. Das Skript setzt `CPPFLAGS`
+entsprechend.
 
 ## Aufbau
 
