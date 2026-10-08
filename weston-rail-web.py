@@ -329,6 +329,10 @@ class GuacdConnection:
         if names and names[0].startswith("VERSION_"):
             values[0] = names[0]
         self.sock.sendall(guac_encode("connect", *values))
+        # Das Zeitlimit galt nur dem Verbindungsaufbau: danach darf guacd
+        # beliebig lange nichts senden (ruhiger Bildschirm), ohne dass die
+        # Weiterleitung abbricht.
+        self.sock.settimeout(None)
 
     def pump_to(self, ws, log=None):
         """Alles von guacd an den Browser weiterreichen."""
@@ -366,6 +370,10 @@ class GuacdConnection:
 class Handler(BaseHTTPRequestHandler):
     server_version = "weston-rail-web"
     protocol_version = "HTTP/1.1"
+    # ungepuffert lesen: sonst liegen nach dem WebSocket-Handschlag Teile
+    # der ersten Rahmen im Puffer fest (und ein Lesen ueber den Puffer
+    # liefert sofort ein Dateiende)
+    rbufsize = 0
 
     def log_message(self, fmt, *args):
         if CONFIG.verbose:
@@ -522,7 +530,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.flush()
 
-        ws = WebSocket(self.connection, self.rfile)
+        ws = WebSocket(self.connection)
         guacd = None
         try:
             port = broker_connect(user, app)
@@ -535,6 +543,9 @@ class Handler(BaseHTTPRequestHandler):
                 "security": "tls",
                 "ignore-cert": "true",
                 "resize-method": "display-update",
+                # guacd 1.6 mit FreeRDP 3 zeichnet ueber den Grafikkanal
+                # nichts; mit den klassischen Codecs kommt das Bild an
+                "disable-gfx": CONFIG.gfx and "" or "true",
                 "enable-wallpaper": "true",
                 "width": width, "height": height, "dpi": dpi,
             })
@@ -589,6 +600,8 @@ def main():
     parser.add_argument("--apps-conf", default=APPS_CONF)
     parser.add_argument("--shell", default="kiosk", choices=("kiosk", "desktop"),
                         help="kiosk: Anwendung bildschirmfüllend; desktop: mit Fensterverwaltung")
+    parser.add_argument("--gfx", action="store_true",
+                        help="Grafikkanal (EGFX) in guacd verwenden (Standard: aus)")
     parser.add_argument("--insecure-cookie", action="store_true",
                         help="Cookie ohne Secure-Flag (Test ohne HTTPS)")
     parser.add_argument("-v", "--verbose", action="store_true")
