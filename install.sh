@@ -2,7 +2,12 @@
 # weston-rail-web installieren (Debian 13)
 set -e
 [ "$(id -u)" = 0 ] || { echo "Bitte als root ausfuehren (sudo)."; exit 1; }
-apt-get install -y guacd python3
+apt-get install -y python3
+# guacd ist seit 11/2024 nicht mehr in Debian; bei Bedarf aus den Quellen bauen
+if ! command -v guacd >/dev/null 2>&1; then
+	echo "guacd fehlt - wird gebaut (tools/install-guacd.sh)"
+	sh "$(dirname "$0")/tools/install-guacd.sh"
+fi
 install -d /usr/local/lib/weston-rail-web
 cp -r weston-rail-web.py static /usr/local/lib/weston-rail-web/
 chmod 755 /usr/local/lib/weston-rail-web/weston-rail-web.py

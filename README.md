@@ -40,8 +40,25 @@ apps.example.org {
 }
 ```
 
-Voraussetzungen: `guacd` (Paket `guacd`), Python 3, ein laufender
-`weston-rail-broker` mit Version, die `AUTH` und `CONNECT` kennt.
+Voraussetzungen: Python 3, ein laufender `weston-rail-broker` mit `AUTH`
+und `CONNECT` – und `guacd`.
+
+### guacd gibt es in Debian 13 nicht mehr
+
+Debian hat `guacamole-server` im November 2024 aus dem Archiv entfernt, es
+gibt also kein Paket. `install.sh` baut es deshalb bei Bedarf selbst
+(`tools/install-guacd.sh`), nur mit RDP-Unterstützung, und richtet einen
+systemd-Dienst ein:
+
+```bash
+sudo ./tools/install-guacd.sh      # auch einzeln aufrufbar
+```
+
+Das Skript nimmt FreeRDP 2 mit guacamole-server 1.5.5, falls vorhanden
+(von Apache als stabil empfohlen), sonst FreeRDP 3 mit 1.6.0. Mit sehr
+neuen FreeRDP-3-Versionen (ab etwa 3.3x) lässt sich 1.6.0 nicht
+übersetzen, weil FreeRDP dort eine Schnittstelle geändert hat; das
+FreeRDP 3.15 aus Debian 13 ist davon nicht betroffen.
 
 ## Aufbau
 

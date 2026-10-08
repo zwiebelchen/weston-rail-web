@@ -1,0 +1,75 @@
+#!/bin/sh
+#
+# guacd auf Debian 13 bauen und installieren.
+#
+# Debian hat guacamole-server im November 2024 aus dem Archiv entfernt, es
+# gibt also kein Paket mehr. Dieses Skript baut es aus den Quellen, nur mit
+# RDP-Unterstuetzung (SSH, VNC, Telnet und Kubernetes brauchen wir nicht).
+#
+# Bevorzugt wird FreeRDP 2 mit guacamole-server 1.5.5 (von Apache als
+# stabil empfohlen); ist FreeRDP 2 nicht vorhanden, wird 1.6.0 mit
+# FreeRDP 3 gebaut.
+#
+set -e
+
+[ "$(id -u)" = 0 ] || { echo "Bitte als root ausfuehren (sudo)."; exit 1; }
+
+PREFIX=${PREFIX:-/usr/local}
+BUILD=${BUILD:-/usr/local/src}
+
+apt-get update
+apt-get install -y --no-install-recommends \
+	build-essential autoconf automake libtool pkgconf curl ca-certificates \
+	libcairo2-dev libjpeg62-turbo-dev libpng-dev libossp-uuid-dev
+
+if apt-get install -y --no-install-recommends libfreerdp-dev libwinpr-dev 2>/dev/null; then
+	VERSION=${VERSION:-1.5.5}
+	echo "FreeRDP 2 gefunden: baue guacamole-server $VERSION"
+else
+	apt-get install -y --no-install-recommends freerdp3-dev libwinpr3-dev
+	VERSION=${VERSION:-1.6.0}
+	echo "FreeRDP 3: baue guacamole-server $VERSION (RemoteApp dort experimentell;"
+	echo "fuer weston-rail-web ohne Belang, wir benutzen gewoehnliches RDP)"
+fi
+
+mkdir -p "$BUILD"
+cd "$BUILD"
+TARBALL="guacamole-server-$VERSION.tar.gz"
+[ -f "$TARBALL" ] || curl -fL -o "$TARBALL" \
+	"https://downloads.apache.org/guacamole/$VERSION/source/guacamole-server-$VERSION.tar.gz"
+rm -rf "guacamole-server-$VERSION"
+tar xf "$TARBALL"
+cd "guacamole-server-$VERSION"
+
+# -Wno-error: neuere FreeRDP-Versionen melden abgekuendigte Funktionen,
+# guacamole-server uebersetzt sonst mit -Werror nicht
+./configure --prefix="$PREFIX" \
+	--with-rdp \
+	--without-vnc --without-ssh --without-telnet --without-kubernetes \
+	--disable-guacenc --disable-guaclog \
+	CFLAGS="-g -O2 -Wno-error"
+make -j"$(nproc)"
+make install
+ldconfig
+
+cat > /etc/systemd/system/guacd.service <<EOF
+[Unit]
+Description=Guacamole proxy daemon (guacd)
+After=network.target
+
+[Service]
+ExecStart=$PREFIX/sbin/guacd -b 127.0.0.1 -f
+Restart=on-failure
+User=nobody
+Group=nogroup
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now guacd
+sleep 1
+systemctl --no-pager --lines=5 status guacd || true
+echo
+echo "Fertig: $("$PREFIX"/sbin/guacd -v 2>&1 | head -1)"
