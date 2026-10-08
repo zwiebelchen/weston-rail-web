@@ -463,10 +463,19 @@ class Handler(BaseHTTPRequestHandler):
     def websocket(self):
         user = self.user()
         query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-        app = (query.get("app") or [""])[0]
-        width = (query.get("width") or ["1280"])[0]
-        height = (query.get("height") or ["800"])[0]
-        dpi = (query.get("dpi") or ["96"])[0]
+        app = (query.get("app") or [""])[0].rstrip("?")
+
+        def number(name, default, lowest, highest):
+            """Nur Ziffern übernehmen: guacamole-common-js hängt beim
+            Verbinden ein '?' an die Adresse, sonst käme z. B. '96?' an
+            und guacd würde die Verbindung verwerfen."""
+            raw = "".join(c for c in (query.get(name) or [""])[0] if c.isdigit())
+            value = int(raw) if raw else default
+            return str(max(lowest, min(highest, value)))
+
+        width = number("width", 1280, 640, 8192)
+        height = number("height", 800, 480, 8192)
+        dpi = number("dpi", 96, 48, 480)
         key = self.headers.get("Sec-WebSocket-Key")
         if not user or not key:
             return self.send_error(401)

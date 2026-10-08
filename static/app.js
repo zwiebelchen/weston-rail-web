@@ -259,7 +259,8 @@ function startSession(app) {
 
 	dialog(app.title + " wird verbunden und gestartet.",
 	       "Remoteverbindung wird konfiguriert…", true);
-	client.connect("");
+	/* leerer Datensatz: guacamole-common-js hängt sonst "?" an die Adresse */
+	client.connect("x=1");
 
 	/* Eingaben */
 	const mouse = new Guacamole.Mouse(displayElement);
