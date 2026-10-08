@@ -47,7 +47,43 @@ Getestet mit `guacd` 1.3 gegen `weston-rail-broker`
   keine Unterstützung – es wertet nur `load-balance-info` aus. mstsc und
   xfreerdp folgen der Umleitung, `guacd` nicht.
 
-## Lösungsweg
+## Zweiter Befund: guacd kann kein HiDef-RAIL
+
+Mit der Übergabe ohne Umleitung (Broker-Kommando `CONNECT`, inzwischen
+eingebaut) kommt `guacd` bis zur Aktivierung der Sitzung und scheitert dann:
+
+```
+weston: HiDef-RAIL is required for RAIL.
+guacd:  Connection closed.
+```
+
+`rdprail-shell` (aus WSLg) beherrscht nur die moderne RAIL-Variante, bei der
+jedes Fenster über den Grafikkanal (EGFX) als eigene Fläche übertragen wird.
+`guacamole-server` setzt dagegen nur klassisches RAIL und **unterstützt EGFX
+überhaupt nicht** (geprüft in 1.5.5: kein Grafikkanal-Code, keine
+Einstellung dafür). Das ist in Guacamole kein kleiner Patch, sondern ein
+eigenes Protokollmodul.
+
+## Lösungsweg (angepasst)
+
+Für den Browser also **kein RAIL**, sondern eine Kiosk-Sitzung: Weston mit
+`kiosk-shell`, in der genau eine Anwendung bildschirmfüllend läuft. Das ist
+gewöhnliches RDP, womit `guacd` bestens zurechtkommt, und sieht im
+Browser-Tab aus wie eine einzelne Anwendung.
+
+1. `weston-rail-web` meldet den Benutzer per PAM an (Dienst `weston-rail`,
+   also auch AD-Konten).
+2. Es fordert beim Broker über `CONNECT` eine Sitzung für diesen Benutzer an
+   – künftig wahlweise als Kiosk-Sitzung mit einem Programm aus
+   `/etc/weston-rail/apps.conf`.
+3. `guacd` verbindet sich auf den einmaligen Port, der Browser bekommt das
+   Bild über das Guacamole-Protokoll.
+
+Dieselben Sessions wie bei mstsc lassen sich im Browser damit nicht
+weiterbenutzen (RAIL dort, Kiosk hier). Drucken, Zwischenablage und
+Dateiübertragung bleiben möglich.
+
+## Alter Lösungsweg (umgesetzt, aber nicht ausreichend)
 
 Statt `guacd` zu patchen, bekommt der Broker eine Übergabe **ohne**
 Umleitung, die ohnehin nützlich ist:
