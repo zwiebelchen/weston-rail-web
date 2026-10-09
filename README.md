@@ -101,8 +101,11 @@ systemd-Dienst ein:
 sudo ./tools/install-guacd.sh      # auch einzeln aufrufbar
 ```
 
-**FreeRDP 2 ist Pflicht** (Debian 13: Paket `freerdp2-dev`), das Skript
-baut damit guacamole-server 1.5.5. Mit dem experimentellen FreeRDP-3-Weg
+**FreeRDP 2 ist Pflicht**, das Skript baut damit guacamole-server 1.5.5.
+Debian 13 hat kein `freerdp2-dev` mehr (nur bis Debian 12); das Skript
+baut FreeRDP 2 dann selbst nach `/opt/freerdp2`, getrennt vom FreeRDP 3
+des Systems, das Weston benutzt. Beides stört sich nicht, der Bau dauert
+einige Minuten. Mit dem experimentellen FreeRDP-3-Weg
 von 1.6.0 meldet sich der Geräte-Kanal (rdpdr) nicht an – dann gibt es in
 der Sitzung **weder Laufwerk noch Drucker**. Nachgemessen:
 

@@ -22,22 +22,48 @@ apt-get install -y --no-install-recommends \
 	build-essential autoconf automake libtool pkgconf curl ca-certificates \
 	libcairo2-dev libjpeg62-turbo-dev libpng-dev libossp-uuid-dev ghostscript
 
-# FreeRDP 2 (Debian: freerdp2-dev) ist Pflicht: mit dem experimentellen
-# FreeRDP-3-Weg von guacamole-server 1.6 meldet sich der Geraete-Kanal
-# (rdpdr) nicht an - dann gibt es in der Sitzung weder Laufwerk noch
-# Drucker (hier nachgemessen).
-if apt-get install -y --no-install-recommends freerdp2-dev 2>/dev/null ||
-   apt-get install -y --no-install-recommends libfreerdp-dev libwinpr-dev 2>/dev/null; then
-	VERSION=${VERSION:-1.5.5}
-	echo "FreeRDP 2 gefunden: baue guacamole-server $VERSION"
+# FreeRDP 2 ist Pflicht: mit dem experimentellen FreeRDP-3-Weg von
+# guacamole-server 1.6 meldet sich der Geraete-Kanal (rdpdr) nicht an -
+# dann gibt es in der Sitzung weder Laufwerk noch Drucker (nachgemessen).
+# Debian 13 hat kein freerdp2-dev mehr; dann wird FreeRDP 2 nach
+# /opt/freerdp2 gebaut, getrennt vom FreeRDP 3 des Systems (das Weston
+# benutzt). Beides stoert sich nicht.
+FREERDP2_PREFIX=${FREERDP2_PREFIX:-/opt/freerdp2}
+FREERDP2_VERSION=${FREERDP2_VERSION:-2.11.7}
+
+if apt-get install -y --no-install-recommends freerdp2-dev 2>/dev/null; then
+	echo "FreeRDP 2 aus der Distribution"
+elif pkg-config --exists freerdp2 2>/dev/null; then
+	echo "FreeRDP 2 bereits vorhanden"
 else
-	echo "FreeRDP 2 (Paket freerdp2-dev) fehlt."
-	echo "Mit FreeRDP 3 funktionieren Laufwerke und Drucken im Browser nicht."
-	echo "Trotzdem bauen? Dann: VERSION=1.6.0 FORCE_FREERDP3=1 $0"
-	[ -n "$FORCE_FREERDP3" ] || exit 1
-	apt-get install -y --no-install-recommends freerdp3-dev libwinpr3-dev
-	VERSION=${VERSION:-1.6.0}
+	echo "FreeRDP 2 fehlt in dieser Distribution - baue $FREERDP2_VERSION nach $FREERDP2_PREFIX"
+	apt-get install -y --no-install-recommends \
+		cmake git libssl-dev libx11-dev libxext-dev libxcursor-dev \
+		libxi-dev libxrandr-dev libxinerama-dev libxv-dev libxkbcommon-dev \
+		zlib1g-dev libusb-1.0-0-dev
+	mkdir -p "$BUILD"
+	cd "$BUILD"
+	[ -d freerdp2-src ] || git clone --depth 1 --branch "$FREERDP2_VERSION" \
+		https://github.com/FreeRDP/FreeRDP.git freerdp2-src
+	cd freerdp2-src
+	cmake -B build -S . \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX="$FREERDP2_PREFIX" \
+		-DWITH_SERVER=OFF -DWITH_SHADOW=OFF -DWITH_PROXY=OFF \
+		-DWITH_CLIENT_SDL=OFF -DWITH_X11=OFF -DWITH_WAYLAND=OFF \
+		-DWITH_CUPS=OFF -DWITH_PULSE=OFF -DWITH_ALSA=OFF \
+		-DWITH_FFMPEG=OFF -DWITH_SWSCALE=OFF -DWITH_MANPAGES=OFF
+	cmake --build build -j"$(nproc)"
+	cmake --install build
+	echo "$FREERDP2_PREFIX/lib" > /etc/ld.so.conf.d/freerdp2.conf
+	ldconfig
+	export PKG_CONFIG_PATH="$FREERDP2_PREFIX/lib/pkgconfig:$FREERDP2_PREFIX/lib64/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+	export LDFLAGS="-Wl,-rpath,$FREERDP2_PREFIX/lib${LDFLAGS:+ $LDFLAGS}"
+	pkg-config --exists freerdp2 || { echo "FreeRDP 2 Bau fehlgeschlagen"; exit 1; }
+	echo "FreeRDP 2 gebaut: $(pkg-config --modversion freerdp2)"
 fi
+
+VERSION=${VERSION:-1.5.5}
 
 mkdir -p "$BUILD"
 cd "$BUILD"
@@ -58,6 +84,7 @@ cd "guacamole-server-$VERSION"
 # neuere FreeRDP-Versionen melden abgekuendigte Namen.
 RDP_CPPFLAGS=$(pkg-config --cflags freerdp2 2>/dev/null ||
 	pkg-config --cflags freerdp3 winpr3 2>/dev/null || true)
+# der Bau von guacamole-server muss FreeRDP 2 finden, auch unter /opt
 CPPFLAGS="$RDP_CPPFLAGS" ./configure --prefix="$PREFIX" \
 	--with-rdp \
 	--without-vnc --without-ssh --without-telnet --without-kubernetes \
