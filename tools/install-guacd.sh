@@ -22,16 +22,21 @@ apt-get install -y --no-install-recommends \
 	build-essential autoconf automake libtool pkgconf curl ca-certificates \
 	libcairo2-dev libjpeg62-turbo-dev libpng-dev libossp-uuid-dev ghostscript
 
-# Debian nennt das Entwicklerpaket von FreeRDP 2 "freerdp2-dev"
+# FreeRDP 2 (Debian: freerdp2-dev) ist Pflicht: mit dem experimentellen
+# FreeRDP-3-Weg von guacamole-server 1.6 meldet sich der Geraete-Kanal
+# (rdpdr) nicht an - dann gibt es in der Sitzung weder Laufwerk noch
+# Drucker (hier nachgemessen).
 if apt-get install -y --no-install-recommends freerdp2-dev 2>/dev/null ||
    apt-get install -y --no-install-recommends libfreerdp-dev libwinpr-dev 2>/dev/null; then
 	VERSION=${VERSION:-1.5.5}
-	echo "FreeRDP 2 gefunden: baue guacamole-server $VERSION (empfohlen)"
+	echo "FreeRDP 2 gefunden: baue guacamole-server $VERSION"
 else
+	echo "FreeRDP 2 (Paket freerdp2-dev) fehlt."
+	echo "Mit FreeRDP 3 funktionieren Laufwerke und Drucken im Browser nicht."
+	echo "Trotzdem bauen? Dann: VERSION=1.6.0 FORCE_FREERDP3=1 $0"
+	[ -n "$FORCE_FREERDP3" ] || exit 1
 	apt-get install -y --no-install-recommends freerdp3-dev libwinpr3-dev
 	VERSION=${VERSION:-1.6.0}
-	echo "FreeRDP 3: baue guacamole-server $VERSION (RemoteApp dort experimentell;"
-	echo "fuer weston-rail-web ohne Belang, wir benutzen gewoehnliches RDP)"
 fi
 
 mkdir -p "$BUILD"
@@ -51,7 +56,7 @@ cd "guacamole-server-$VERSION"
 # "'freerdp' has no member named 'input'".
 # -Wno-error/-Wno-deprecated-declarations: configure haengt -Werror an;
 # neuere FreeRDP-Versionen melden abgekuendigte Namen.
-RDP_CPPFLAGS=$(pkg-config --cflags freerdp2 winpr 2>/dev/null ||
+RDP_CPPFLAGS=$(pkg-config --cflags freerdp2 2>/dev/null ||
 	pkg-config --cflags freerdp3 winpr3 2>/dev/null || true)
 CPPFLAGS="$RDP_CPPFLAGS" ./configure --prefix="$PREFIX" \
 	--with-rdp \
