@@ -28,6 +28,53 @@ sudo ./install.sh
 sudo systemctl enable --now weston-rail-web
 ```
 
+### Von Hand starten (Test und Fehlersuche)
+
+Der Dienst liegt nach der Installation unter
+`/usr/local/lib/weston-rail-web/weston-rail-web.py` und läuft als root
+(er spricht mit dem Broker und legt die Laufwerksordner an):
+
+```bash
+# zum Testen direkt erreichbar, ohne HTTPS, mit Protokoll:
+sudo /usr/local/lib/weston-rail-web/weston-rail-web.py \
+    --listen 0.0.0.0 --port 8085 --insecure-cookie -v
+
+# im Betrieb hinter Caddy/nginx (Vorgabe):
+sudo /usr/local/lib/weston-rail-web/weston-rail-web.py --listen 127.0.0.1 --port 8081
+
+# mit Mitschnitt der ersten 20 Anweisungen je Richtung (Fehlersuche):
+sudo /usr/local/lib/weston-rail-web/weston-rail-web.py \
+    --listen 0.0.0.0 --port 8085 --insecure-cookie -v --trace 20
+```
+
+Vorher den Dienst stoppen, falls er schon läuft:
+`sudo systemctl stop weston-rail-web`.
+
+Alle Optionen:
+
+| Option | Bedeutung |
+|---|---|
+| `--listen ADRESSE` | Adresse (Vorgabe `127.0.0.1`; `0.0.0.0` für Zugriff ohne Proxy) |
+| `--port N` | Port (Vorgabe 8081) |
+| `--insecure-cookie` | Anmelde-Cookie ohne `Secure`-Kennzeichen, nötig ohne HTTPS |
+| `--shell desktop\|kiosk` | Fensterverwaltung (Vorgabe) oder eine Anwendung bildschirmfüllend |
+| `--apps-conf DATEI` | andere Allowlist (Vorgabe `/etc/weston-rail/apps.conf`) |
+| `--drive-dir NAME` | Ordner im Home, der als Laufwerk erscheint (Vorgabe `Browser-Dateien`) |
+| `--drive-name NAME`, `--printer-name NAME` | Namen von Laufwerk und Drucker |
+| `--gfx` | Grafikkanal in guacd einschalten (Vorgabe: aus) |
+| `--trace N` | die ersten N Anweisungen je Richtung protokollieren |
+| `-v` | jede Anfrage protokollieren |
+
+Dauerhafte Optionen für den Dienst setzt man in der Unit:
+
+```bash
+sudo systemctl edit weston-rail-web
+#   [Service]
+#   ExecStart=
+#   ExecStart=/usr/local/lib/weston-rail-web/weston-rail-web.py --listen 127.0.0.1 --port 8081 --shell kiosk
+sudo systemctl restart weston-rail-web
+```
+
 Der Dienst lauscht auf `127.0.0.1:8081` und gehört hinter einen Reverse Proxy
 mit TLS (Caddy); ohne HTTPS zum Testen mit `--insecure-cookie` starten.
 Optionen: `--listen`, `--port`, `--shell kiosk|desktop`, `--apps-conf`, `-v`.
