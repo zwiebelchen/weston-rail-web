@@ -46,8 +46,12 @@ else
 	[ -d freerdp2-src ] || git clone --depth 1 --branch "$FREERDP2_VERSION" \
 		https://github.com/FreeRDP/FreeRDP.git freerdp2-src
 	cd freerdp2-src
+	# FreeRDP 2.11 ist aelter als GCC 14: was dort inzwischen Fehler sind
+	# (unvertraegliche Zeigertypen u. a.), waren damals Warnungen
+	rm -rf build
 	cmake -B build -S . \
 		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_C_FLAGS="-Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-function-declaration -Wno-error" \
 		-DCMAKE_INSTALL_PREFIX="$FREERDP2_PREFIX" \
 		-DWITH_SERVER=OFF -DWITH_SHADOW=OFF -DWITH_PROXY=OFF \
 		-DWITH_CLIENT_SDL=OFF -DWITH_X11=OFF -DWITH_WAYLAND=OFF \
